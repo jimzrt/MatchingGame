@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="css/styles.css">
+	<title>Movie matching game</title>
+	<link rel = "stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+
+</head>
+<body>
+			<div>
+				<div id="header">
+					<h1> Matching Game</h1>	
+				</div>
+			</div>
+	<div class="container">
+
+		
+		<div class="row">
+			
+
+		<div id="Filme">
+			
+			<div id="Film1">
+				<img id="Poster1"> 
+				<div id="Title1"></div>
+				<div class="middle">
+				<div id="itext1"></div>
+				</div>
+			</div>
+			<div id="Film2">
+				<img id="Poster2"> 
+				<div id="Title2"></div>
+				<div class="middle">
+				<div id="itext2"></div>
+				</div>
+			</div>
+			<div id="Film3">
+				<img id="Poster3"> 
+				<div id="Title3"></div>
+				<div class="middle">
+				<div id="itext3"></div>
+				</div>
+			</div>
+		
+		</div>
+
+			<div id="stvalues">
+				<p id="output" >00:00</p>
+				<p id="score" ></p>
+			</div>
+				
+
+			<!-- message area-->
+			<div id="bottom">
+
+				<div id="guesscont">
+				<span>Bisherige Vermutungen:</span>
+				<div id="guesses"></div>
+				</div>
+
+				<form id="messageForm">
+					<div class="form-group">
+					<label>Gib deine nächste Vermutung ein</label>
+					<br/>
+					<input type="text" size="25" id="message" spellcheck="true" required>
+					<br/>
+					<input type="submit" class="btn btn-primary" value="Eingabe" />
+					</div>
+				</form>
+			</div>
+			<!-- Spieler verlässt Raum-->
+			<form id="playerLeft" >
+				<div>
+					<div>
+						<h2 id="playerLeftmsg"> Other player left the game!</h2>
+						<input type="submit" class="btn btn-primary" value="Neuer Partner" />
+						<input type="button" class="button-toggle" value="Highscore-Tabelle" />
+					</div>
+				</div>
+			</form>
+
+			<div id="highscore">
+				<div>
+					<div>
+						<h2 id="highscoretxt" >Highscore-Tabelle</h2>
+						<div id="highscorelist"></div>
+						<input type="submit" class="btn btn-primary" id="restart" value="Neues Spiel" />
+						
+					</div>
+					<div id="countdown" ></div>
+
+				</div>
+			</div>
+
+			<form id="endround" class="row">
+				<div>
+					<div>
+						<h2 id="endroundtxt" >Runde beendet</h2>
+						<input type="submit" class="btn btn-primary" value="Neues Spiel" />
+						<input type="button" class="ERbutton-high" value="Highscore-Tabelle" />
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>	
+</body>
+
+	<!--$, da Jquery-->
+	<script>
+		$(function(){
+			var sock = io.connect();
+			entries = [];
+			var tmsg;
+			var ctime;
+			var tmins;
+			var tsecs;
+			var cscore=0; //current score
+			var titles=[];
+		
+			var $title1 = $('#Title1');
+			var $messageForm = $('#messageForm'); 	
+			var $message = $('#message');
+			var $guesses = $('#guesses');
+			var $eingaben= $('#users');
+			var $playerLeft =$('#playerLeft');
+			var $highscore = $('#highscore');
+			var $restart= $('#restart');
+			var $endround=$('#endround');
+			var $countdown=$('#countdown')
+			var $highscorelist=$('#highscorelist');
+			var $Filme = $('#Filme');
+			var $guesscont=$('#guesscont');
+			var $itext1=$('#itext1');
+
+			$messageForm.submit(function(e){
+				e.preventDefault();
+				entries.push($message.val().toLowerCase());
+				sock.emit('send message', $message.val()); // emiten send message mit der bisherigen Eingabe $message.val
+				$message.val('');
+				sock.emit('eingaben',entries);	//Eingabefeld leeren
+			})
+
+			$playerLeft.submit(function(e){
+				e.preventDefault();
+    			location.reload(true);
+    			
+    		})
+			$restart.click(function(e){
+				e.preventDefault();
+				location.reload(true);
+			})
+
+    		$('.button-toggle').click(function(){
+    			$playerLeft.hide();
+    			$highscore.show();
+    			$countdown.hide();
+    			$restart.show();
+    			$endround.hide();
+			})
+    		$('.ERbutton-high').click(function(){
+    			$endround.hide();
+    			$countdown.hide();
+    			$highscore.show();
+    			$playerLeft.hide();
+    			$restart.show();
+    			
+			});
+
+			
+
+    		
+			$endround.submit(function(e){
+				e.preventDefault();
+    			location.reload(true);
+    		})
+			//Show Highscores at the beginning
+			window.onload=function(){
+				sock.emit('current score');
+			}
+
+    		sock.on('partner joined', function(data){
+    			ctime=data;
+    			document.getElementById('countdown').innerHTML= ctime;
+    			if(data==0){
+				$highscore.hide();
+    			$messageForm.show();
+    			$restart.show();
+
+    			//$countdown.hide();
+    			sock.emit('ingame Timer');
+    			}
+    		})
+
+    		//display 3 titles
+    		sock.on('title', function(data){
+    			titles=data;
+    			document.getElementById('Title1').innerHTML=data[0];
+    			document.getElementById('Title2').innerHTML=data[1];
+				document.getElementById('Title3').innerHTML=data[2];
+    		})
+    		sock.on('poster',function(data){
+    			$("#Poster1").attr("src", data[0]);
+    			$("#Poster2").attr("src", data[1]);
+    			$("#Poster3").attr("src", data[2]);
+    			$guesscont.show();
+    		})
+
+    		//klappt nicht
+    		sock.on('infos',function(directors){
+    			console.log("la director");
+    			console.log(directors[0][0]);
+   				$itext1.append('<div class="well">director: ' +directors[0][0].name+ '</div>');
+
+   			
+    			
+   				// document.getElementById($('#itext2')).innerHTML=actors[1];
+				// document.getElementById($('#itext3')).innerHTML=actors[2];
+    		})
+  
+			//display new guess
+			sock.on('new message', function(data){ // Abfangen von Server
+				
+				$guesses.append('<div class="well">' +data.msg+ '</div>');	 //anhängen der Nachricht von Server in chat Fenster
+			
+			});
+
+			//display Partner left window
+			sock.on('partner left', function(data){
+
+				if(ctime!==0){
+				sock.emit('countdown abbrechen');
+			}
+				sock.emit('timer abbrechen');
+				$messageForm.hide();
+				$playerLeft.show();
+				$guesscont.hide();
+				$highscore.hide();
+				$endround.hide();
+				$Filme.html("");
+				document.getElementById('output').innerHTML= "00:00";
+				
+			})
+			
+			//check if new entry matches entries of partner
+   			sock.on('überprüfe', function(data){
+   				
+   				
+   					if(entries.includes(data.toLowerCase())==true){
+   						sock.emit('save match', data);
+   					}
+   				
+   				
+   			})
+
+   			//display Match found
+   			sock.on('match found', function(){
+   				entries=[];
+   				$guesses.append('<div class="well"> match found! </div>');
+   				setTimeout(function() {
+        		$guesses.html("");
+        		}, 3000);
+
+   			})
+   			
+   			//show ingame timer
+   			sock.on('timer ausgeben', function(mins,secs){
+   				tmins= mins;
+   				tsecs= secs;
+   				document.getElementById('output').innerHTML= mins+ ":" + secs;
+   				$Filme.show();
+   			})
+
+   			sock.on('points', function(data){
+   				cscore+=data;
+   				document.getElementById('score').innerHTML= "Score: "+cscore;
+   			})
+
+   			sock.on('Runde Ende', function(){
+   				$('#bottom').hide();
+   				sock.emit('current score',cscore);
+   				$endround.show();
+   				
+   				
+   				sock.emit('timer abbrechen');
+   				$Filme.html("")
+   			})
+
+   			sock.on('add to highscore',function(data){
+   				$highscorelist.html("");
+   				for(var i=0; i<data.length;i++){
+   				$highscorelist.append('<div class="well">' +data[i]+ '</div>');
+
+   			}
+   			})
+
+		})
+		
+
+	
+			
+		
+	</script>
+</body>
+</html>
